@@ -1,9 +1,9 @@
 from typing import OrderedDict
 
 from fastapi import APIRouter, status
-from fastapi.responses import JSONResponse
 
-from api.db.schemas import Book, Genre, InMemoryDB
+from api.db.schemas import Book, BookNotFound, BooksResponse, Genre, InMemoryDB
+from exceptions import BookNotFoundError
 
 router = APIRouter()
 
@@ -35,10 +35,25 @@ db.books = OrderedDict(
 )
 
 
-@router.get(
-    "/", response_model=OrderedDict[int, Book], status_code=status.HTTP_200_OK
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=Book,
+    operation_id="create_book",
 )
-async def get_books() -> OrderedDict[int, Book]:
+async def create_book(book: Book) -> Book:
+    return db.add_book(book)
+
+
+@router.get(
+    "/",
+    response_model=BooksResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List books",
+    operation_id="list_books",
+)
+async def get_books() -> BooksResponse:
+    """This endpoint returns all the books."""
     return db.get_books()
 
 
@@ -63,14 +78,37 @@ async def get_book(book_id: int) -> Book:
     raise BookNotFoundError
 
 
+@router.put(
+    "/{book_id}",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Successful Response", "model": Book},
+        404: {"description": "Book not found", "model": BookNotFound},
+    },
+    operation_id="update_book",
+)
 async def update_book(book_id: int, book: Book) -> Book:
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=db.update_book(book_id, book).model_dump(),
-    )
+    """Update a book by ID."""
+    if _ := db.get_book(book_id):
+        db.update_book(book_id, book)
+        return book
+
+    raise BookNotFoundError
 
 
-@router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{book_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        204: {"description": "Successful Response", "model": None},
+        404: {"description": "Book not found", "model": BookNotFound},
+    },
+    operation_id="delete_book",
+)
 async def delete_book(book_id: int) -> None:
-    db.delete_book(book_id)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
+    """Delete a book by ID."""
+    if _ := db.get_book(book_id):
+        db.delete_book(book_id)
+        return None
+
+    raise BookNotFoundError
