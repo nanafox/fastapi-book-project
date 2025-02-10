@@ -42,7 +42,27 @@ async def get_books() -> OrderedDict[int, Book]:
     return db.get_books()
 
 
-@router.put("/{book_id}", response_model=Book, status_code=status.HTTP_200_OK)
+@router.get(
+    "/{book_id}",
+    summary="Fetch a book",
+    responses={
+        200: {"description": "Successful Response", "model": Book},
+        404: {"description": "Book not found", "model": BookNotFound},
+    },
+    operation_id="get_book",
+)
+async def get_book(book_id: int) -> Book:
+    """This endpoint retrieves a single book by ID.
+
+    The book is returned successfully when found, otherwise an error 404
+    is sent to the user to alert them of books unavailability.
+    """
+    if book := db.get_book(book_id):
+        return book
+
+    raise BookNotFoundError
+
+
 async def update_book(book_id: int, book: Book) -> Book:
     return JSONResponse(
         status_code=status.HTTP_200_OK,
