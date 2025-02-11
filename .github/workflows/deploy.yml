@@ -1,22 +1,15 @@
 name: "Deploy"
-
 on:
-  workflow_run:
-    workflows: ["Test Books API"]
-    types: [completed]
+  push:
     branches: [main]
-
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
+    needs: [test]
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout the code
         uses: actions/checkout@v2
-
       - name: Deploy to my EC2 instance
         uses: easingthemes/ssh-deploy@main
         env:
@@ -27,17 +20,13 @@ jobs:
           TARGET: ${{ secrets.REMOTE_TARGET }}
           SCRIPT_AFTER: |
             cd fastapi-book-project
-
             if [ -d '.venv' ]; then
               source .venv/bin/activate
             else
               python3 -m venv .venv
               source .venv/bin/activate
             fi
-
             pip install -r requirements.txt
             sudo systemctl restart books-api.service
-
-            # Run the healthchecks to verify everything went well
             curl http://${{ secrets.REMOTE_HOST }}/healthcheck ; echo
             echo "Deployed successfully"
