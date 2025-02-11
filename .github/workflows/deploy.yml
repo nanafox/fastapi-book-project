@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ["Test Books API"]
     types: [completed]
+    branches: [main]
 
 
 jobs:
