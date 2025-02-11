@@ -7,7 +7,6 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to EC2 Instance
     runs-on: ubuntu-latest
 
     steps:
@@ -21,10 +20,11 @@ jobs:
           SOURCE: "./"
           REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
           REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          TARGET: ${{ REMOTE_TARGET }}
+          TARGET: ${{ secrets.REMOTE_TARGET }}
           SCRIPT_AFTER: |
             cd fastapi-book-project
-            if [ -f '/.venv' ]; then 
+
+            if [ -d '.venv' ]; then
               source .venv/bin/activate
             else
               python3 -m venv .venv
@@ -33,3 +33,7 @@ jobs:
 
             pip install -r requirements.txt
             sudo systemctl restart books-api.service
+
+            # Run the healthchecks to verify everything went well
+            curl localhost:80/healthcheck ; echo
+            echo "Deployed successfully"
